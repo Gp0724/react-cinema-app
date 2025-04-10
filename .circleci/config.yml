@@ -1,5 +1,4 @@
 version: 2.1
-
 jobs:
   build:
     docker:
@@ -128,7 +127,7 @@ workflows:
       - run:
           name: Install AWS CLI
           command: |
-            sudo apt-get update
+            sudo apt-get update -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true
             sudo apt-get install -y unzip curl
             curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
             unzip awscliv2.zip
