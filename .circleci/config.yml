@@ -1,54 +1,185 @@
-# This config was automatically generated from your source code
-# Stacks detected: deps:node:.
 version: 2.1
-orbs:
-  node: circleci/node@5
+
 jobs:
-  test-node:
-    # Install node dependencies and run tests
-    executor: node/default
-    steps:
-      - checkout
-      - node/install-packages:
-          pkg-manager: npm
-      - run:
-          name: Run tests
-          command: npm test --passWithNoTests
-  build-node:
-    # Build node project
-    executor: node/default
-    steps:
-      - checkout
-      - node/install-packages:
-          pkg-manager: npm
-      - run:
-          command: npm run build
-      - run:
-          name: Create the ~/artifacts directory if it doesn't exist
-          command: mkdir -p ~/artifacts
-      # Copy output to artifacts dir
-      - run:
-          name: Copy artifacts
-          command: cp -R build dist public .output .next .docusaurus ~/artifacts 2>/dev/null || true
-      - store_artifacts:
-          path: ~/artifacts
-          destination: node-build
-  deploy:
-    # This is an example deploy job, not actually used by the workflow
+  build:
     docker:
-      - image: cimg/base:stable
+      - image: circleci/node:13.12.0
+    working_directory: ~/repo
     steps:
-      # Replace this with steps to deploy to users
+      - checkout
       - run:
-          name: deploy
-          command: '#e.g. ./deploy.sh'
+          name: Show current branch
+          command: echo ${CURRENT_BRANCH}
+      - restore_cache:
+          key:
+            - app-{{ checksum "package.json" }}
+            - app-
+      - run:
+          name: Install dependencies
+          command: npm install      
+      - save_cache:
+          paths:
+            - node_modules
+          key: app-{{ checksum "package.json" }}
+
+  deploy-to-aws-s3:
+    docker:
+      - image: circleci/node:13.12.0
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run:
+          name: Show current branch
+          command: echo ${CURRENT_BRANCH}
+      - run:
+          name: Installing AWS CLI
+          working_directory: /
+          command: |
+            sudo apt-get -y -qq update
+            sudo apt-get install -y awscli
+            sudo apt-get install -y python-pip python-dev build-essential
+      - run:
+          name: Build Project
+          command: |
+            npm install
+            npm run build
+            cd build
+            zip ../build.zip -r * .[^.]*
+            echo "Build successful"
+      - run:
+          name: Deploy to AWS S3
+          command: |
+            if [ "${CURRENT_BRANCH}" == "master" ]
+            then
+              aws --region ${AWS_REGION} s3 sync ~/repo/build s3://${AWS_PRODUCTION_BUCKET} --delete
+            elif [ "${CURRENT_BRANCH}" == "staging" ]
+            then
+              aws --region ${AWS_REGION} s3 sync ~/repo/build s3://${AWS_STAGING_BUCKET} --delete
+            else
+              aws --region ${AWS_REGION} s3 sync ~/repo/build s3://${AWS_DEV_BUCKET} --delete
+            fi
+
+  deploy-to-aws-cloudfront:
+    docker:
+      - image: circleci/node:13.12.0
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run:
+          name: Show current branch
+          command: echo ${CURRENT_BRANCH}
+      - run:
+          name: Installing AWS CLI
+          working_directory: /
+          command: |
+            sudo apt-get -y -qq update
+            sudo apt-get install -y awscli
+            sudo apt-get install -y python-pip python-dev build-essential
+      - run:
+          name: Build Project
+          command: |
+            npm install
+            npm run build
+            cd build
+            zip ../build.zip -r * .[^.]*
+            echo "Build successful"
+      - run:
+          name: Deploy to AWS Cloudfront
+          command: |
+            aws configure set preview.cloudfront
+            if [ "${CURRENT_BRANCH}" == "master" ]
+            then
+              aws cloudfront create-invalidation --distribution-id ${PRODUCTION_DISTRIBUTION_ID} --paths /\*
+            elif [ "${CURRENT_BRANCH}" == "staging" ]
+            then
+              aws cloudfront create-invalidation --distribution-id ${STAGING_DISTRIBUTION_ID} --paths /\*
+            else
+              aws cloudfront create-invalidation --distribution-id ${DEV_DISTRIBUTION_ID} --paths /\*
+            fi
+
 workflows:
-  build-and-test:
+  build_and_deploy:
     jobs:
-      - test-node
-      - build-node:
+      - build
+      - deploy-to-aws-s3:
           requires:
-            - test-node
-    # - deploy:
-    #     requires:
-    #       - build-node
+            - build
+          filters:
+            branches:
+              only:
+                - develop
+                - staging
+                - master
+      - deploy-to-aws-cloudfront:
+          requires:
+            - deploy-to-aws-s3
+          filters:
+            branches:
+              only:
+                - develop
+                - staging
+                - master
+
+
+
+
+
+
+
+
+
+
+# # This config was automatically generated from your source code
+# # Stacks detected: deps:node:.
+# version: 2.1
+# orbs:
+#   node: circleci/node@5
+# jobs:
+#   test-node:
+#     # Install node dependencies and run tests
+#     executor: node/default
+#     steps:
+#       - checkout
+#       - node/install-packages:
+#           pkg-manager: npm
+#       - run:
+#           name: Run tests
+#           command: npm test --passWithNoTests
+#   build-node:
+#     # Build node project
+#     executor: node/default
+#     steps:
+#       - checkout
+#       - node/install-packages:
+#           pkg-manager: npm
+#       - run:
+#           command: npm run build
+#       - run:
+#           name: Create the ~/artifacts directory if it doesn't exist
+#           command: mkdir -p ~/artifacts
+#       # Copy output to artifacts dir
+#       - run:
+#           name: Copy artifacts
+#           command: cp -R build dist public .output .next .docusaurus ~/artifacts 2>/dev/null || true
+#       - store_artifacts:
+#           path: ~/artifacts
+#           destination: node-build
+#   deploy:
+#     # This is an example deploy job, not actually used by the workflow
+#     docker:
+#       - image: cimg/base:stable
+#     steps:
+#       # Replace this with steps to deploy to users
+#       - run:
+#           name: deploy
+#           command: '#e.g. ./deploy.sh'
+# workflows:
+#   build-and-test:
+#     jobs:
+#       - test-node
+#       - build-node:
+#           requires:
+#             - test-node
+#     # - deploy:
+#     #     requires:
+#     #       - build-node
