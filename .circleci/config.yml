@@ -1,4 +1,5 @@
 version: 2.1
+
 jobs:
   build:
     docker:
@@ -8,7 +9,7 @@ jobs:
       - checkout
       - run:
           name: Show current branch
-          command: echo ${CURRENT_BRANCH}
+          command: echo ${CIRCLE_BRANCH}
       - restore_cache:
           keys:
             - app-{{ checksum "package.json" }}
@@ -23,7 +24,7 @@ jobs:
 
   deploy-to-aws-s3:
     docker:
-      - image: circleci/node:13.12.0
+      - image: cimg/python:3.8
     working_directory: ~/repo
     steps:
       - checkout
@@ -34,9 +35,8 @@ jobs:
           name: Installing AWS CLI
           working_directory: /
           command: |
-            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-            unzip awscliv2.zip
-            sudo ./aws/install
+            sudo apt-get -y -qq update
+            sudo apt-get install -y awscli
       - run:
           name: Build Project
           command: |
@@ -71,9 +71,9 @@ jobs:
           name: Installing AWS CLI
           working_directory: /
           command: |
-            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-            unzip awscliv2.zip
-            sudo ./aws/install
+            sudo apt-get -y -qq update
+            sudo apt-get install -y awscli
+            sudo apt-get install -y python-pip python-dev build-essential
       - run:
           name: Build Project
           command: |
@@ -118,17 +118,3 @@ workflows:
                 - develop
                 - staging
                 - master
-
-  install-aws-cli:
-    docker:
-      - image: circleci/python:3.8
-    steps:
-      - checkout
-      - run:
-          name: Install AWS CLI
-          command: |
-            sudo apt-get update -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true
-            sudo apt-get install -y unzip curl
-            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-            unzip awscliv2.zip
-            sudo ./aws/install
