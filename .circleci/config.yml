@@ -1,4 +1,5 @@
 version: 2.1
+
 jobs:
   build:
     docker:
@@ -39,6 +40,7 @@ jobs:
       - run:
           name: Build Project
           command: |
+            sudo apt-get install -y nodejs npm
             npm install
             npm run build
             cd build
