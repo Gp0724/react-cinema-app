@@ -1,15 +1,19 @@
 version: 2.1
 
-jobs:
-  build:
+executors:
+  app-executor:
     docker:
       - image: circleci/node:13.12.0
     working_directory: ~/repo
+
+jobs:
+  build:
+    executor: app-executor
     steps:
       - checkout
       - run:
           name: Show current branch
-          command: echo ${CIRCLE_BRANCH}
+          command: echo ${CURRENT_BRANCH}
       - restore_cache:
           keys:
             - app-{{ checksum "package.json" }}
@@ -22,10 +26,38 @@ jobs:
             - node_modules
           key: app-{{ checksum "package.json" }}
 
+  linting:
+    executor: app-executor
+    steps:
+      - checkout
+      - run:
+          name: Show current branch
+          command: echo ${CURRENT_BRANCH}
+      - restore_cache:
+          keys:
+            - app-{{ checksum "package.json" }}
+            - app-
+      - run:
+          name: Run linting
+          command: npm run lint
+
+  prettier:
+    executor: app-executor
+    steps:
+      - checkout
+      - run:
+          name: Show current branch
+          command: echo ${CURRENT_BRANCH}
+      - restore_cache:
+          keys:
+            - app-{{ checksum "package.json" }}
+            - app-
+      - run:
+          name: Run prettier check
+          command: npm run prettier:check
+
   deploy-to-aws-s3:
-    docker:
-      - image: cimg/python:3.8
-    working_directory: ~/repo
+    executor: app-executor
     steps:
       - checkout
       - run:
@@ -56,13 +88,11 @@ jobs:
             then
               aws --region ${AWS_REGION} s3 sync ~/repo/build s3://${AWS_STAGING_BUCKET} --delete
             else
-              aws --region ${AWS_REGION} s3 sync ~/repo/build s3://${AWS_DEV_BUCKET} --delete
+              aws --region ${AWS_DEV_BUCKET} s3 sync ~/repo/build s3://${AWS_DEV_BUCKET} --delete
             fi
 
   deploy-to-aws-cloudfront:
-    docker:
-      - image: circleci/node:13.12.0
-    working_directory: ~/repo
+    executor: app-executor
     steps:
       - checkout
       - run:
@@ -101,9 +131,28 @@ workflows:
   build_and_deploy:
     jobs:
       - build
-      - deploy-to-aws-s3:
+      - linting:
           requires:
             - build
+          filters:
+            branches:
+              only:
+                - develop
+                - staging
+                - master
+
+      - prettier:
+          requires:
+            - build
+          filters:
+            branches:
+              only:
+                - develop
+                - staging
+                - master
+      - deploy-to-aws-s3:
+          requires:
+            - prettier
           filters:
             branches:
               only:
