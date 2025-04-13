@@ -6,55 +6,6 @@ executors:
     working_directory: ~/repo
 
 jobs:
-  build:
-    executor: app-executor
-    steps:
-      - checkout
-      - run:
-          name: Show current branch
-          command: echo ${CURRENT_BRANCH}
-      - restore_cache:
-          keys:
-            - app-{{ checksum "package.json" }}
-            - app-
-      - run:
-          name: Install dependencies
-          command: npm install      
-      - save_cache:
-          paths:
-            - node_modules
-          key: app-{{ checksum "package.json" }}
-
-  linting:
-    executor: app-executor
-    steps:
-      - checkout
-      - run:
-          name: Show current branch
-          command: echo ${CURRENT_BRANCH}
-      - restore_cache:
-          keys:
-            - app-{{ checksum "package.json" }}
-            - app-
-      - run:
-          name: Run linting
-          command: npm run lint
-
-  prettier:
-    executor: app-executor
-    steps:
-      - checkout
-      - run:
-          name: Show current branch
-          command: echo ${CURRENT_BRANCH}
-      - restore_cache:
-          keys:
-            - app-{{ checksum "package.json" }}
-            - app-
-      - run:
-          name: Run prettier check
-          command: npm run prettier:check
-
   deploy-to-aws-s3:
     executor: app-executor
     steps:
@@ -67,28 +18,10 @@ jobs:
           working_directory: /
           command: |
             sudo apt-get -y -qq update
-            sudo apt-get install -y awscli
-      - run:
-          name: Build Project
-          command: |
-            sudo apt-get install -y nodejs npm
-            npm install
-            npm run build
-            cd build
-            zip ../build.zip -r * .[^.]*
-            echo "Build successful"
-      - run:
-          name: Deploy to AWS S3
-          command: |
-            if [ "${CURRENT_BRANCH}" == "master" ]
-            then
-              aws --region ${AWS_REGION} s3 sync ~/repo/build s3://${AWS_PRODUCTION_BUCKET} --delete
-            elif [ "${CURRENT_BRANCH}" == "staging" ]
-            then
-              aws --region ${AWS_REGION} s3 sync ~/repo/build s3://${AWS_STAGING_BUCKET} --delete
-            else
-              aws --region ${AWS_DEV_BUCKET} s3 sync ~/repo/build s3://${AWS_DEV_BUCKET} --delete
-            fi
+            sudo apt-get install -y curl unzip
+            curl "https://d1vvhvl2y92vvt.cloudfront.net/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install
 
   deploy-to-aws-cloudfront:
     executor: app-executor
@@ -102,29 +35,10 @@ jobs:
           working_directory: /
           command: |
             sudo apt-get -y -qq update
-            sudo apt-get install -y awscli
-            sudo apt-get install -y python-pip python-dev build-essential
-      - run:
-          name: Build Project
-          command: |
-            npm install
-            npm run build
-            cd build
-            zip ../build.zip -r * .[^.]*
-            echo "Build successful"
-      - run:
-          name: Deploy to AWS Cloudfront
-          command: |
-            aws configure set preview.cloudfront
-            if [ "${CURRENT_BRANCH}" == "master" ]
-            then
-              aws cloudfront create-invalidation --distribution-id ${PRODUCTION_DISTRIBUTION_ID} --paths /*
-            elif [ "${CURRENT_BRANCH}" == "staging" ]
-            then
-              aws cloudfront create-invalidation --distribution-id ${STAGING_DISTRIBUTION_ID} --paths /*
-            else
-              aws cloudfront create-invalidation --distribution-id ${DEV_DISTRIBUTION_ID} --paths /*
-            fi
+            sudo apt-get install -y curl unzip
+            curl "https://d1vvhvl2y92vvt.cloudfront.net/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install
 
 workflows:
   build_and_deploy:
