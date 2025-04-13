@@ -15,6 +15,9 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "lint": "eslint src/**/*.{js,jsx}",
+    "prettier:check": "prettier --check 'src/**/*.{js,jsx,json}'",
+    "prettier:write": "prettier --write 'src/**/*.{js,jsx,json}'",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -35,5 +38,14 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^7.2.1",
+    "eslint-plugin-standard": "^5.0.0",
+    "prettier": "^3.5.3"
   }
 }
