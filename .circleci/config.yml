@@ -141,6 +141,7 @@ workflows:
                 - master
 
       - prettier:
+          executor: app-executor
           requires:
             - build
           filters:
