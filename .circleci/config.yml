@@ -1,10 +1,14 @@
 version: 2.1
 
-jobs:
-  build:
+executors:
+  app-executor:
     docker:
       - image: circleci/node:13.12.0
     working_directory: ~/repo
+
+jobs:
+  build:
+    executor: app-executor
     steps:
       - checkout
       - run:
@@ -26,27 +30,34 @@ jobs:
     executor: app-executor
     steps:
       - checkout
-      - *show-current-branch-name
-      - *restore-cache
+      - run:
+          name: Show current branch
+          command: echo ${CURRENT_BRANCH}
+      - restore_cache:
+          keys:
+            - app-{{ checksum "package.json" }}
+            - app-
       - run:
           name: Run linting
           command: npm run lint
 
-prettier:
-  executor: app-executor
-  steps:
-    - checkout
-    - *show-current-branch-name
-    - *restore-cache
-    - run:
-        name: Run prettier check
-        command: npm run prettier:check
-
+  prettier:
+    executor: app-executor
+    steps:
+      - checkout
+      - run:
+          name: Show current branch
+          command: echo ${CURRENT_BRANCH}
+      - restore_cache:
+          keys:
+            - app-{{ checksum "package.json" }}
+            - app-
+      - run:
+          name: Run prettier check
+          command: npm run prettier:check
 
   deploy-to-aws-s3:
-    docker:
-      - image: circleci/node:13.12.0
-    working_directory: ~/repo
+    executor: app-executor
     steps:
       - checkout
       - run:
@@ -81,9 +92,7 @@ prettier:
             fi
 
   deploy-to-aws-cloudfront:
-    docker:
-      - image: circleci/node:13.12.0
-    working_directory: ~/repo
+    executor: app-executor
     steps:
       - checkout
       - run:
