@@ -131,6 +131,13 @@ jobs:
               aws cloudfront create-invalidation --distribution-id ${STAGING_DISTRIBUTION_ID} --paths /*
             else
               aws cloudfront create-invalidation --distribution-id ${DEV_DISTRIBUTION_ID} --paths /*
+  
+  test:
+    docker:
+      - image: 'cimg/base:stable'
+    steps:
+      - run: echo "test my app"
+
             fi
   notify-via-slack:
   executor: slack-executor  
@@ -197,8 +204,8 @@ jobs:
 workflows:
   build_and_deploy:
     jobs:
-      - build
-      - linting:
+      - test
+      - notify-via-slack:
           requires:
             - build
           filters:
@@ -208,39 +215,39 @@ workflows:
                 - staging
                 - master
 
-      - prettier:
-          requires:
-            - build
-          filters:
-            branches:
-              only:
-                - develop
-                - staging
-                - master
-      - deploy-to-aws-s3:
-          requires:
-            - prettier
-          filters:
-            branches:
-              only:
-                - develop
-                - staging
-                - master
-      - deploy-to-aws-cloudfront:
-          requires:
-            - deploy-to-aws-s3
-          filters:
-            branches:
-              only:
-                - develop
-                - staging
-                - master
-      - notify-via-slack:
-          requires:
-            - deploy-to-aws-cloudfront
-          filters:
-            branches:
-              only:
-                - develop
-                - staging
-                - master
+      # - prettier:
+      #     requires:
+      #       - build
+      #     filters:
+      #       branches:
+      #         only:
+      #           - develop
+      #           - staging
+      #           - master
+      # - deploy-to-aws-s3:
+      #     requires:
+      #       - prettier
+      #     filters:
+      #       branches:
+      #         only:
+      #           - develop
+      #           - staging
+      #           - master
+      # - deploy-to-aws-cloudfront:
+      #     requires:
+      #       - deploy-to-aws-s3
+      #     filters:
+      #       branches:
+      #         only:
+      #           - develop
+      #           - staging
+      #           - master
+      # - notify-via-slack:
+      #     requires:
+      #       - deploy-to-aws-cloudfront
+      #     filters:
+      #       branches:
+      #         only:
+      #           - develop
+      #           - staging
+      #           - master
