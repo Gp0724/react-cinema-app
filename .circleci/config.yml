@@ -133,8 +133,7 @@ jobs:
               aws cloudfront create-invalidation --distribution-id ${DEV_DISTRIBUTION_ID} --paths /*
   
   test:
-    docker:
-      - image: 'cimg/base:stable'
+    executor: app-executor
     steps:
       - run: echo "test my app"
 
