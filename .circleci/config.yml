@@ -1,18 +1,11 @@
 version: 2.1
 orbs:
   slack: circleci/slack@5.1.1
-
 executors:
   app-executor:
     docker:
       - image: circleci/node:14.18.0-buster
     working_directory: ~/repo
-
-  slack-executor:
-    docker:
-      - image: cibuilds/base:latest
-    resource_class: small
-
 jobs:
   build:
     executor: app-executor
@@ -72,7 +65,6 @@ jobs:
           command: echo ${CURRENT_BRANCH}
       - run:
           name: Installing AWS CLI
-          working_directory: /
           command: |
             sudo apt-get -y -qq update
             sudo apt-get install -y awscli
@@ -107,7 +99,6 @@ jobs:
           command: echo ${CURRENT_BRANCH}
       - run:
           name: Installing AWS CLI
-          working_directory: /
           command: |
             sudo apt-get -y -qq update
             sudo apt-get install -y awscli
@@ -132,17 +123,14 @@ jobs:
               aws cloudfront create-invalidation --distribution-id ${STAGING_DISTRIBUTION_ID} --paths /*
             else
               aws cloudfront create-invalidation --distribution-id ${DEV_DISTRIBUTION_ID} --paths /*
-
-  test:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - run: echo "test my app"
+            fi
 
   notify-via-slack:
-    executor: slack-executor
+    executor: app-executor
     steps:
-      - run: echo "Slack notification"
+      - run:
+          name: Slack notification
+          command: echo "Slack notification"
       - slack/notify:
           event: 'always'
           channel: 'all-circleci-projectcompanyteam-name'
