@@ -1,7 +1,6 @@
+version: 2.1
 orbs:
   slack: circleci/slack@5.1.1
-
-version: 2.1
 
 executors:
   app-executor:
@@ -16,7 +15,7 @@ executors:
 
   terraform-executor:
     docker:
-      - image: hashicorp/terraform:0.14.3
+      - image: hashicorp/terraform:1.1.0
 
 jobs:
   build:
