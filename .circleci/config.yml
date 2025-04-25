@@ -17,25 +17,26 @@ executors:
     docker:
       - image: hashicorp/terraform:1.1.0
 
+
+
+
 jobs:
   build:
-    executor: app-executor
-    steps:
-      - checkout
-      - run:
-          name: Show current branch
-          command: echo ${CURRENT_BRANCH}
-      - restore_cache:
-          keys:
-            - app-{{ checksum "package.json" }}
-            - app-
-      - run:
-          name: Install dependencies
-          command: npm install      
-      - save_cache:
-          paths:
-            - node_modules
-          key: app-{{ checksum "package.json" }}
+  executor: app-executor
+  steps:
+    - checkout
+    - *show-current-branch-name
+    - *restore-cache
+    - *install-dependencies
+    - *save-cache
+    - run:
+        name: Copy Infrastructure Folder
+        command: cp -r infrastructure artifacts/infrastructure
+    - persist_to_workspace:
+        root: ./
+        paths:
+          - artifacts
+
 
   linting:
     executor: app-executor
@@ -292,6 +293,7 @@ workflows:
                 - develop
                 - staging
                 - master
+
       - terraform-validate:
           requires:
             - linting 
@@ -302,10 +304,10 @@ workflows:
                 - develop
                 - staging
                 - master
+
       - terraform-plan-and-apply:
           requires:
-            - terraform-validate 
-            
+            - terraform-validate           
           filters:
             branches:
               only:
