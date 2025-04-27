@@ -324,7 +324,7 @@ workflows:
           requires:
             - deploy-to-aws-s3
           filters:
-            branches:
+            branches:3
               only:
                 - develop
                 - staging
