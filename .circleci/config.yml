@@ -169,22 +169,21 @@ jobs:
             aws --region ${AWS_REGION} s3 sync ~/repo/build s3://${AWS_BUCKET_NAME} --delete
 
   deploy-to-aws-cloudfront:
-    executor: app-executor
-    steps:
-      - checkout
-      - attach_workspace:
-          at: ./
-      - *show-current-branch-name
-      - *install-aws-cli
-      - *build-project
-      - run:
-          name: Deploy to AWS CloudFront
-          command: |
-            CLOUDFRONT_DISTRIBUTION_ID=$(cat artifacts/cloudfront_distribution_id.txt | sed 's/"//g')
-            echo $CLOUDFRONT_DISTRIBUTION_ID
+  executor: app-executor
+  steps:
+    - checkout
+    - attach_workspace:
+        at: ./
+    - *show-current-branch-name
+    - *install-aws-cli
+    - run:
+        name: Deploy to AWS CloudFront
+        command: |
+          CLOUDFRONT_DISTRIBUTION_ID=$(cat artifacts/cloudfront_distribution_id.txt | sed 's/"//g')
+          echo "CloudFront Distribution ID: $CLOUDFRONT_DISTRIBUTION_ID"
 
-            aws configure set preview.cloudfront true
-            aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --paths '/*'
+          aws configure set preview.cloudfront true
+          aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --paths '/*'
 
   test:
     executor: app-executor
