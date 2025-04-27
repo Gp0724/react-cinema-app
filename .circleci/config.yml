@@ -70,8 +70,11 @@ jobs:
       - *install-dependencies
       - *save-cache
       - run:
-          name: Copy Infrastructure Folder
-          command: cp -r infrastructure artifacts/infrastructure
+          name: Prepare artifacts directory and copy Infrastructure Folder
+          command: |
+            mkdir -p artifacts
+            cp -r infrastructure artifacts/infrastructure
+
       - persist_to_workspace:
           root: ./
           paths:
