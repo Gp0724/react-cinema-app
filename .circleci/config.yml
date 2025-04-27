@@ -268,7 +268,6 @@ workflows:
   build_and_deploy:
     jobs:
       - build
-
       - linting:
           requires:
             - build
@@ -278,7 +277,6 @@ workflows:
                 - develop
                 - staging
                 - master
-
       - prettier:
           requires:
             - build
@@ -288,7 +286,6 @@ workflows:
                 - develop
                 - staging
                 - master
-
       - terraform-validate:
           requires:
             - linting
@@ -299,7 +296,6 @@ workflows:
                 - develop
                 - staging
                 - master
-
       - terraform-plan-and-apply:
           requires:
             - terraform-validate
@@ -309,7 +305,6 @@ workflows:
                 - develop
                 - staging
                 - master
-
       - deploy-to-aws-s3:
           requires:
             - terraform-plan-and-apply
@@ -319,17 +314,15 @@ workflows:
                 - develop
                 - staging
                 - master
-
       - deploy-to-aws-cloudfront:
           requires:
             - deploy-to-aws-s3
           filters:
-            branches:3
+            branches:
               only:
                 - develop
                 - staging
                 - master
-
       - notify-via-slack:
           requires:
             - deploy-to-aws-cloudfront
@@ -339,12 +332,10 @@ workflows:
                 - develop
                 - staging
                 - master
-
       - hold:
           type: approval
           requires:
             - deploy-to-aws-cloudfront
-
       - terraform-destroy:
           requires:
             - hold
@@ -354,3 +345,4 @@ workflows:
                 - develop
                 - staging
                 - master
+
