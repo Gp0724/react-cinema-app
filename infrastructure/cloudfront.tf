@@ -40,16 +40,16 @@ resource "aws_cloudfront_distribution" "cinema_app_s3_distribution" {
     }
   }
 
-      dynamic "custom_error_response" {
+  dynamic "custom_error_response" {
     for_each = var.custom_error_response
     content {
-        error_caching_min_ttl = custom_error_response.value.error_caching_min_ttl
-        error_code            = custom_error_response.value.error_code
-        response_code         = custom_error_response.value.response_code
-        response_page_path    = custom_error_response.value.response_page_path
+      error_caching_min_ttl = custom_error_response.value.error_caching_min_ttl
+      error_code            = custom_error_response.value.error_code
+      response_code         = custom_error_response.value.response_code
+      response_page_path    = custom_error_response.value.response_page_path
     }
   }
-  
+
   viewer_certificate {
     cloudfront_default_certificate = true
   }
@@ -59,5 +59,5 @@ resource "aws_cloudfront_distribution" "cinema_app_s3_distribution" {
       restriction_type = "none"
     }
   }
-  tags= local.common_tags 
+  tags = local.common_tags
 }
