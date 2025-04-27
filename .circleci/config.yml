@@ -17,6 +17,47 @@ executors:
     docker:
       - image: hashicorp/terraform:1.1.0
 
+aliases:
+  - &show-current-branch-name
+    run:
+     name: Show current branch
+     command: echo ${CIRCLE_BRANCH}
+
+  - &restore-cache
+    restore_cache:
+    keys:
+      - app-{{ checksum "package.json" }}
+      - app-
+
+  - &install-dependencies
+   run:
+    name: Install dependencies
+    command: npm install
+
+  - &save-cache
+    save_cache:
+    paths:
+      - node_modules
+    key: app-{{ checksum "package.json" }}
+ 
+  - &install-aws-cli
+    run:
+      name: Installing AWS CLI
+      working_directory: /
+      command: |
+        sudo apt-get -y -qq update
+        sudo apt-get install -y awscli
+        sudo apt-get install -y python-pip python-dev build-essential
+
+  - &build-project
+    run:
+      name: Build Project
+      command: |
+        npm install
+        npm run build
+        cd build
+        zip ../build.zip -r * .[^.]*
+        echo "Build successful"
 
 
 
