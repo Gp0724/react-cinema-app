@@ -173,7 +173,7 @@ jobs:
     steps:
       - checkout
       - attach_workspace:
-          at: ./
+          at: ./  
       - *show-current-branch-name
       - *install-aws-cli
       - run:
@@ -184,6 +184,7 @@ jobs:
 
             aws configure set preview.cloudfront true
             aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --paths '/*'
+
 
   test:
     executor: app-executor
