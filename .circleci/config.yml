@@ -1,4 +1,5 @@
 version: 2.1
+
 orbs:
   slack: circleci/slack@5.1.1
 
@@ -18,29 +19,29 @@ executors:
       - image: hashicorp/terraform:1.1.0
 
 aliases:
-  - &show-current-branch-name
+  show-current-branch-name: &show-current-branch-name
     run:
-     name: Show current branch
-     command: echo ${CIRCLE_BRANCH}
+      name: Show current branch
+      command: echo ${CIRCLE_BRANCH}
 
-  - &restore-cache
+  restore-cache: &restore-cache
     restore_cache:
-    keys:
-      - app-{{ checksum "package.json" }}
-      - app-
+      keys:
+        - app-{{ checksum "package.json" }}
+        - app-
 
-  - &install-dependencies
-   run:
-    name: Install dependencies
-    command: npm install
+  install-dependencies: &install-dependencies
+    run:
+      name: Install dependencies
+      command: npm install
 
-  - &save-cache
+  save-cache: &save-cache
     save_cache:
-    paths:
-      - node_modules
-    key: app-{{ checksum "package.json" }}
- 
-  - &install-aws-cli
+      paths:
+        - node_modules
+      key: app-{{ checksum "package.json" }}
+
+  install-aws-cli: &install-aws-cli
     run:
       name: Installing AWS CLI
       working_directory: /
@@ -49,34 +50,32 @@ aliases:
         sudo apt-get install -y awscli
         sudo apt-get install -y python-pip python-dev build-essential
 
-
-  - &build-project
-      run:build:
-        name: Build Project
-        command: |
-          npm install
-          npm run build
-          cd build
-          zip ../build.zip -r * .[^.]*
-          echo "Build successful"
-
+  build-project: &build-project
+    run:
+      name: Build Project
+      command: |
+        npm install
+        npm run build
+        cd build
+        zip ../build.zip -r * .[^.]*
+        echo "Build successful"
 
 jobs:
-  executor: app-executor
-  steps:
-    - checkout
-    - *show-current-branch-name
-    - *restore-cache
-    - *install-dependencies
-    - *save-cache
-    - run:
-        name: Copy Infrastructure Folder
-        command: cp -r infrastructure artifacts/infrastructure
-    - persist_to_workspace:
-        root: ./
-        paths:
-          - artifacts
-
+  build:
+    executor: app-executor
+    steps:
+      - checkout
+      - *show-current-branch-name
+      - *restore-cache
+      - *install-dependencies
+      - *save-cache
+      - run:
+          name: Copy Infrastructure Folder
+          command: cp -r infrastructure artifacts/infrastructure
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - artifacts
 
   linting:
     executor: app-executor
@@ -85,10 +84,7 @@ jobs:
       - run:
           name: Show current branch
           command: echo ${CURRENT_BRANCH}
-      - restore_cache:
-          keys:
-            - app-{{ checksum "package.json" }}
-            - app-
+      - *restore-cache
       - run:
           name: Run linting
           command: npm run lint
@@ -97,17 +93,14 @@ jobs:
     executor: app-executor
     steps:
       - checkout
-      - run: 
+      - run:
           name: Show current branch
-          command: echo ${CURRENT_BRANCH}              
-      - restore_cache:
-          keys:
-            - app-{{ checksum "package.json" }}
-            - app-
+          command: echo ${CURRENT_BRANCH}
+      - *restore-cache
       - run:
           name: Run prettier check
           command: npm run prettier:check
-  
+
   terraform-validate:
     executor: terraform-executor
     steps:
@@ -151,83 +144,41 @@ jobs:
           root: ./
           paths:
             - artifacts
-        
+
   deploy-to-aws-s3:
     executor: app-executor
     steps:
       - checkout
       - attach_workspace:
           at: ./
-      - run:
-          name: Show current branch
-          command: echo ${CURRENT_BRANCH}
-      - run:
-          name: Installing AWS CLI
-          working_directory: /
-          command: |
-            sudo apt-get -y -qq update
-            sudo apt-get install -y awscli
-      - run:
-          name: Build Project
-          command: |
-            sudo apt-get install -y nodejs npm
-            npm install
-            npm run build
-            cd build
-            zip ../build.zip -r * .[^.]*
-            echo "Build successful"
+      - *show-current-branch-name
+      - *install-aws-cli
+      - *build-project
       - run:
           name: Deploy to AWS S3
           command: |
             AWS_BUCKET_NAME=$(cat artifacts/cinema_bucket_name.txt | sed 's/"//g')
             echo $AWS_BUCKET_NAME
 
-            if [ "${CURRENT_BRANCH}" == "master" ]; then
-              aws --region ${AWS_REGION} s3 sync ~/repo/build s3://${AWS_BUCKET_NAME} --delete
-            elif [ "${CURRENT_BRANCH}" == "staging" ]; then
-              aws --region ${AWS_REGION} s3 sync ~/repo/build s3://${AWS_BUCKET_NAME} --delete
-            else
-              aws --region ${AWS_REGION} s3 sync ~/repo/build s3://${AWS_BUCKET_NAME} --delete
-            fi
+            aws --region ${AWS_REGION} s3 sync ~/repo/build s3://${AWS_BUCKET_NAME} --delete
 
   deploy-to-aws-cloudfront:
     executor: app-executor
     steps:
-      - checkout     
+      - checkout
       - attach_workspace:
           at: ./
+      - *show-current-branch-name
+      - *install-aws-cli
+      - *build-project
       - run:
-          name: Show current branch
-          command: echo ${CURRENT_BRANCH}
-      - run:
-          name: Installing AWS CLI
-          working_directory: /
-          command: |
-            sudo apt-get -y -qq update
-            sudo apt-get install -y awscli
-            sudo apt-get install -y python-pip python-dev build-essential
-      - run:
-          name: Build Project
-          command: |
-            npm install
-            npm run build
-            cd build
-            zip ../build.zip -r * .[^.]*
-            echo "Build successful"
-      - run:
-          name: Deploy to AWS Cloudfront
+          name: Deploy to AWS CloudFront
           command: |
             CLOUDFRONT_DISTRIBUTION_ID=$(cat artifacts/cloudfront_distribution_id.txt | sed 's/"//g')
-            echo $AWS_BUCKET_NAME
+            echo $CLOUDFRONT_DISTRIBUTION_ID
 
-            aws configure set preview.cloudfront
-            if [ "${CURRENT_BRANCH}" == "master" ]; then
-              aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --paths /*
-            elif [ "${CURRENT_BRANCH}" == "staging" ]; then
-              aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --paths /*
-            else
-              aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --paths /*
-            fi
+            aws configure set preview.cloudfront true
+            aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --paths '/*'
 
   test:
     executor: app-executor
@@ -235,12 +186,12 @@ jobs:
       - run: echo "test my app"
 
   notify-via-slack:
-    executor: slack-executor  
+    executor: slack-executor
     steps:
       - run: echo "Slack notification"
       - slack/notify:
-          event: 'always'
-          channel: 'all-circleci-projectcompanyteam-name'
+          event: always
+          channel: all-circleci-projectcompanyteam-name
           template: ''
           custom: |
             {
@@ -293,6 +244,7 @@ jobs:
                 }
               ]
             }
+
   terraform-destroy:
     executor: terraform-executor
     steps:
@@ -312,7 +264,7 @@ workflows:
   build_and_deploy:
     jobs:
       - build
-      # had added test and removed build to test just the slack notifications
+
       - linting:
           requires:
             - build
@@ -323,7 +275,6 @@ workflows:
                 - staging
                 - master
 
-      # had commented the whole below code to test slack notfications
       - prettier:
           requires:
             - build
@@ -336,7 +287,7 @@ workflows:
 
       - terraform-validate:
           requires:
-            - linting 
+            - linting
             - prettier
           filters:
             branches:
@@ -347,7 +298,7 @@ workflows:
 
       - terraform-plan-and-apply:
           requires:
-            - terraform-validate           
+            - terraform-validate
           filters:
             branches:
               only:
@@ -364,6 +315,7 @@ workflows:
                 - develop
                 - staging
                 - master
+
       - deploy-to-aws-cloudfront:
           requires:
             - deploy-to-aws-s3
@@ -373,6 +325,7 @@ workflows:
                 - develop
                 - staging
                 - master
+
       - notify-via-slack:
           requires:
             - deploy-to-aws-cloudfront
@@ -382,11 +335,12 @@ workflows:
                 - develop
                 - staging
                 - master
+
       - hold:
           type: approval
           requires:
             - deploy-to-aws-cloudfront
-            
+
       - terraform-destroy:
           requires:
             - hold
